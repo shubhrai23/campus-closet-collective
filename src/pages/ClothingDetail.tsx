@@ -168,17 +168,16 @@ export default function ClothingDetail() {
         <div className="grid md:grid-cols-2 gap-8 lg:gap-12 items-start">
           {/* Images */}
           <div className="space-y-4">
-            {/* 1. CHANGED: aspect-square to aspect-[3/4] for a taller container */}
-            <div className="aspect-[3/4] rounded-xl overflow-hidden bg-muted relative flex items-center justify-center">
+            {/* CHANGED: bg-muted -> bg-black */}
+            <div className="aspect-[3/4] rounded-xl overflow-hidden bg-black relative flex items-center justify-center border border-border/10 shadow-lg">
               {clothing.images.length > 0 ? (
                 <img
                   src={clothing.images[selectedImage]}
                   alt={clothing.title}
-                  // 2. CHANGED: object-cover to object-contain so it shows the whole image
                   className="w-full h-full object-contain"
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-8xl">
+                <div className="w-full h-full flex items-center justify-center text-8xl text-muted-foreground/20">
                   {categoryInfo?.icon || '👕'}
                 </div>
               )}
@@ -189,7 +188,6 @@ export default function ClothingDetail() {
                   <button
                     key={idx}
                     onClick={() => setSelectedImage(idx)}
-                    // Kept thumbnails square as they are just previews
                     className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-colors ${
                       idx === selectedImage ? 'border-primary' : 'border-transparent'
                     }`}
