@@ -18,7 +18,7 @@ import { toast } from 'sonner';
 import { CATEGORIES, CONDITIONS, STATUS_CONFIG } from '@/lib/constants';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { ArrowLeft, Calendar as CalendarIcon, Info } from 'lucide-react';
+import { ArrowLeft, Calendar as CalendarIcon, Info, Wallet } from 'lucide-react';
 import { differenceInDays, format } from 'date-fns';
 import { DateRange } from 'react-day-picker';
 
@@ -47,7 +47,7 @@ export default function ClothingDetail() {
   const [isRenting, setIsRenting] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  // CONFIG: 10% Service Fee added ON TOP of rent
+  // CONFIG: 10% Service Fee
   const COMMISSION_RATE = 0.10; 
 
   useEffect(() => {
@@ -71,14 +71,13 @@ export default function ClothingDetail() {
     setLoading(false);
   };
 
-  // Helper to calculate costs
   const getCostBreakdown = () => {
     if (!dateRange?.from || !dateRange?.to || !clothing) return null;
     
     const days = differenceInDays(dateRange.to, dateRange.from) + 1;
-    const baseRent = days * clothing.rent_per_day; // This goes to Owner
-    const serviceFee = Math.ceil(baseRent * COMMISSION_RATE); // This goes to You
-    const totalAmount = baseRent + serviceFee; // Renter pays this
+    const baseRent = days * clothing.rent_per_day; 
+    const serviceFee = Math.ceil(baseRent * COMMISSION_RATE); 
+    const totalAmount = baseRent + serviceFee; 
 
     return { days, baseRent, serviceFee, totalAmount };
   };
@@ -109,8 +108,8 @@ export default function ClothingDetail() {
       owner_id: clothing.owner_id,
       start_date: format(dateRange.from, 'yyyy-MM-dd'),
       end_date: format(dateRange.to, 'yyyy-MM-dd'),
-      total_amount: costs.totalAmount, // Renter pays the inflated price
-      platform_fee: costs.serviceFee,  // We record your profit separately
+      total_amount: costs.totalAmount,
+      platform_fee: costs.serviceFee,
       status: 'reserved',
     });
 
@@ -123,7 +122,8 @@ export default function ClothingDetail() {
         .update({ status: 'reserved' })
         .eq('id', clothing.id);
 
-      toast.success('Rental request submitted! Admin will coordinate the exchange.');
+      // CHANGED: Success message now sets the expectation of manual contact
+      toast.success('Request sent! The Admin will contact you shortly for pickup.');
       setDialogOpen(false);
       navigate('/my-rentals');
     }
@@ -135,7 +135,6 @@ export default function ClothingDetail() {
   const conditionInfo = CONDITIONS.find((c) => c.value === clothing?.condition);
   const statusInfo = clothing ? STATUS_CONFIG[clothing.status] : null;
 
-  // Use the helper for rendering
   const costs = getCostBreakdown();
 
   if (loading) {
@@ -243,14 +242,14 @@ export default function ClothingDetail() {
                 <DialogTrigger asChild>
                   <Button size="lg" className="w-full text-lg shadow-glow py-6">
                     <CalendarIcon className="h-5 w-5 mr-2" />
-                    Rent This Item
+                    Request to Rent
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-md">
                   <DialogHeader>
-                    <DialogTitle>Select Rental Dates</DialogTitle>
+                    <DialogTitle>Review Rental Request</DialogTitle>
                     <DialogDescription>
-                      Choose when you want to rent "{clothing.title}"
+                      Check the details for "{clothing.title}"
                     </DialogDescription>
                   </DialogHeader>
                   <div className="flex justify-center py-4">
@@ -263,30 +262,36 @@ export default function ClothingDetail() {
                     />
                   </div>
                   
-                  {/* Cost Breakdown Section */}
                   {costs && (
-                    <div className="bg-muted rounded-lg p-4 space-y-3">
-                      <div className="flex justify-between text-sm">
-                        <span>Duration</span>
-                        <span>{costs.days} days</span>
+                    <div className="space-y-4">
+                      {/* Price Breakdown */}
+                      <div className="bg-muted rounded-lg p-4 space-y-3">
+                        <div className="flex justify-between text-sm">
+                          <span>Duration</span>
+                          <span>{costs.days} days</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span>Base Rent</span>
+                          <span>₹{costs.baseRent}</span>
+                        </div>
+                        <div className="flex justify-between text-sm text-muted-foreground">
+                          <span>Platform Fee</span>
+                          <span>+₹{costs.serviceFee}</span>
+                        </div>
+                        
+                        <div className="border-t border-border pt-2 flex justify-between font-bold text-lg">
+                          <span>Total Payable</span>
+                          <span>₹{costs.totalAmount}</span>
+                        </div>
                       </div>
-                      <div className="flex justify-between text-sm">
-                        <span>Base Rent (₹{clothing.rent_per_day} x {costs.days})</span>
-                        <span>₹{costs.baseRent}</span>
-                      </div>
-                      <div className="flex justify-between text-sm text-muted-foreground">
-                        <span>Platform Fee (10%)</span>
-                        <span>+₹{costs.serviceFee}</span>
-                      </div>
-                      
-                      <div className="border-t border-border pt-2 flex justify-between font-bold text-lg">
-                        <span>Total to Pay</span>
-                        <span>₹{costs.totalAmount}</span>
-                      </div>
-                      
-                      <div className="text-xs text-muted-foreground bg-background/50 p-2 rounded flex gap-2">
-                        <Info className="w-4 h-4 flex-shrink-0" />
-                        <span>Includes service fee for platform maintenance and coordination.</span>
+
+                      {/* CHANGED: Yellow Info Box for "Pay Later" context */}
+                      <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3 flex gap-3 items-start">
+                        <Wallet className="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" />
+                        <div className="text-sm text-yellow-700/90 dark:text-yellow-500">
+                          <p className="font-semibold mb-0.5">No immediate payment</p>
+                          Payment is collected manually when you pick up the item from the Admin.
+                        </div>
                       </div>
                     </div>
                   )}
@@ -297,7 +302,7 @@ export default function ClothingDetail() {
                       disabled={!dateRange?.from || !dateRange?.to || isRenting}
                       className="w-full"
                     >
-                      {isRenting ? 'Submitting...' : `Confirm & Pay ₹${costs ? costs.totalAmount : ''}`}
+                      {isRenting ? 'Sending...' : 'Submit Request'}
                     </Button>
                   </DialogFooter>
                 </DialogContent>
