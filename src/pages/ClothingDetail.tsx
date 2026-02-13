@@ -54,7 +54,6 @@ export default function ClothingDetail() {
   const fetchClothing = async () => {
     if (!id) return;
 
-    // REMOVED: The profile fetch part so owner details are hidden from the network response too
     const { data, error } = await supabase
       .from('clothes')
       .select('*')
@@ -110,7 +109,6 @@ export default function ClothingDetail() {
       console.error('Error creating rental:', error);
       toast.error('Failed to create rental request');
     } else {
-      // Update clothing status
       await supabase
         .from('clothes')
         .update({ status: 'reserved' })
@@ -133,7 +131,7 @@ export default function ClothingDetail() {
       <Layout>
         <div className="container mx-auto px-4 py-8">
           <div className="grid md:grid-cols-2 gap-8">
-            <Skeleton className="aspect-square rounded-lg" />
+            <Skeleton className="aspect-[3/4] rounded-lg" />
             <div className="space-y-4">
               <Skeleton className="h-10 w-3/4" />
               <Skeleton className="h-6 w-1/2" />
@@ -167,15 +165,17 @@ export default function ClothingDetail() {
           Back
         </Button>
 
-        <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
+        <div className="grid md:grid-cols-2 gap-8 lg:gap-12 items-start">
           {/* Images */}
           <div className="space-y-4">
-            <div className="aspect-square rounded-xl overflow-hidden bg-muted">
+            {/* 1. CHANGED: aspect-square to aspect-[3/4] for a taller container */}
+            <div className="aspect-[3/4] rounded-xl overflow-hidden bg-muted relative flex items-center justify-center">
               {clothing.images.length > 0 ? (
                 <img
                   src={clothing.images[selectedImage]}
                   alt={clothing.title}
-                  className="w-full h-full object-cover"
+                  // 2. CHANGED: object-cover to object-contain so it shows the whole image
+                  className="w-full h-full object-contain"
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-8xl">
@@ -189,6 +189,7 @@ export default function ClothingDetail() {
                   <button
                     key={idx}
                     onClick={() => setSelectedImage(idx)}
+                    // Kept thumbnails square as they are just previews
                     className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-colors ${
                       idx === selectedImage ? 'border-primary' : 'border-transparent'
                     }`}
@@ -201,7 +202,7 @@ export default function ClothingDetail() {
           </div>
 
           {/* Details */}
-          <div className="space-y-6">
+          <div className="space-y-6 font-sans">
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <Badge className={`${statusInfo?.color} text-primary-foreground`}>
@@ -224,16 +225,14 @@ export default function ClothingDetail() {
             </div>
 
             {clothing.description && (
-              <p className="text-muted-foreground">{clothing.description}</p>
+              <p className="text-muted-foreground leading-relaxed">{clothing.description}</p>
             )}
 
-            {/* REMOVED: Owner Info Card */}
-            
             {/* Rent Button */}
             {!isOwner && clothing.status === 'available' && (
               <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button size="lg" className="w-full text-lg shadow-glow">
+                  <Button size="lg" className="w-full text-lg shadow-glow py-6">
                     <CalendarIcon className="h-5 w-5 mr-2" />
                     Rent This Item
                   </Button>
@@ -284,13 +283,13 @@ export default function ClothingDetail() {
             )}
 
             {isOwner && (
-              <div className="bg-muted rounded-lg p-4 text-center text-muted-foreground">
+              <div className="bg-muted/50 border border-border rounded-lg p-4 text-center text-muted-foreground">
                 This is your listing. You can manage it from "My Listings".
               </div>
             )}
 
             {clothing.status !== 'available' && !isOwner && (
-              <div className="bg-muted rounded-lg p-4 text-center text-muted-foreground">
+              <div className="bg-muted/50 border border-border rounded-lg p-4 text-center text-muted-foreground">
                 This item is currently {clothing.status}. Check back later!
               </div>
             )}
