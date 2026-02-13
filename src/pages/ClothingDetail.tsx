@@ -4,7 +4,6 @@ import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -19,7 +18,7 @@ import { toast } from 'sonner';
 import { CATEGORIES, CONDITIONS, STATUS_CONFIG } from '@/lib/constants';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { ArrowLeft, Calendar as CalendarIcon, MapPin, User as UserIcon } from 'lucide-react';
+import { ArrowLeft, Calendar as CalendarIcon } from 'lucide-react';
 import { differenceInDays, format } from 'date-fns';
 import { DateRange } from 'react-day-picker';
 
@@ -35,11 +34,6 @@ interface ClothingItem {
   images: string[];
   owner_id: string;
   created_at: string;
-  profiles?: {
-    full_name: string;
-    hostel: string | null;
-    room_number: string | null;
-  };
 }
 
 export default function ClothingDetail() {
@@ -60,16 +54,10 @@ export default function ClothingDetail() {
   const fetchClothing = async () => {
     if (!id) return;
 
+    // REMOVED: The profile fetch part so owner details are hidden from the network response too
     const { data, error } = await supabase
       .from('clothes')
-      .select(`
-        *,
-        profiles:owner_id (
-          full_name,
-          hostel,
-          room_number
-        )
-      `)
+      .select('*')
       .eq('id', id)
       .single();
 
@@ -239,30 +227,8 @@ export default function ClothingDetail() {
               <p className="text-muted-foreground">{clothing.description}</p>
             )}
 
-            {/* Owner Info */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Listed by
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <UserIcon className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">{clothing.profiles?.full_name}</span>
-                </div>
-                {clothing.profiles?.hostel && (
-                  <div className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">
-                      {clothing.profiles.hostel}
-                      {clothing.profiles.room_number && ` - Room ${clothing.profiles.room_number}`}
-                    </span>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
+            {/* REMOVED: Owner Info Card */}
+            
             {/* Rent Button */}
             {!isOwner && clothing.status === 'available' && (
               <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
