@@ -18,7 +18,7 @@ import { toast } from 'sonner';
 import { CATEGORIES, CONDITIONS, STATUS_CONFIG } from '@/lib/constants';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { ArrowLeft, Calendar as CalendarIcon } from 'lucide-react';
+import { ArrowLeft, Calendar as CalendarIcon, Info } from 'lucide-react';
 import { differenceInDays, format } from 'date-fns';
 import { DateRange } from 'react-day-picker';
 
@@ -47,13 +47,15 @@ export default function ClothingDetail() {
   const [isRenting, setIsRenting] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
 
+  // CONFIG: 10% Service Fee added ON TOP of rent
+  const COMMISSION_RATE = 0.10; 
+
   useEffect(() => {
     fetchClothing();
   }, [id]);
 
   const fetchClothing = async () => {
     if (!id) return;
-
     const { data, error } = await supabase
       .from('clothes')
       .select('*')
@@ -66,14 +68,19 @@ export default function ClothingDetail() {
     } else {
       setClothing(data as unknown as ClothingItem);
     }
-
     setLoading(false);
   };
 
-  const calculateTotal = () => {
-    if (!dateRange?.from || !dateRange?.to || !clothing) return 0;
+  // Helper to calculate costs
+  const getCostBreakdown = () => {
+    if (!dateRange?.from || !dateRange?.to || !clothing) return null;
+    
     const days = differenceInDays(dateRange.to, dateRange.from) + 1;
-    return days * clothing.rent_per_day;
+    const baseRent = days * clothing.rent_per_day; // This goes to Owner
+    const serviceFee = Math.ceil(baseRent * COMMISSION_RATE); // This goes to You
+    const totalAmount = baseRent + serviceFee; // Renter pays this
+
+    return { days, baseRent, serviceFee, totalAmount };
   };
 
   const handleRent = async () => {
@@ -83,7 +90,8 @@ export default function ClothingDetail() {
       return;
     }
 
-    if (!dateRange?.from || !dateRange?.to || !clothing) {
+    const costs = getCostBreakdown();
+    if (!costs || !clothing || !dateRange?.from || !dateRange?.to) {
       toast.error('Please select rental dates');
       return;
     }
@@ -101,7 +109,8 @@ export default function ClothingDetail() {
       owner_id: clothing.owner_id,
       start_date: format(dateRange.from, 'yyyy-MM-dd'),
       end_date: format(dateRange.to, 'yyyy-MM-dd'),
-      total_amount: calculateTotal(),
+      total_amount: costs.totalAmount, // Renter pays the inflated price
+      platform_fee: costs.serviceFee,  // We record your profit separately
       status: 'reserved',
     });
 
@@ -125,6 +134,9 @@ export default function ClothingDetail() {
   const categoryInfo = CATEGORIES.find((c) => c.value === clothing?.category);
   const conditionInfo = CONDITIONS.find((c) => c.value === clothing?.condition);
   const statusInfo = clothing ? STATUS_CONFIG[clothing.status] : null;
+
+  // Use the helper for rendering
+  const costs = getCostBreakdown();
 
   if (loading) {
     return (
@@ -168,7 +180,6 @@ export default function ClothingDetail() {
         <div className="grid md:grid-cols-2 gap-8 lg:gap-12 items-start">
           {/* Images */}
           <div className="space-y-4">
-            {/* CHANGED: bg-muted -> bg-black */}
             <div className="aspect-[3/4] rounded-xl overflow-hidden bg-black relative flex items-center justify-center border border-border/10 shadow-lg">
               {clothing.images.length > 0 ? (
                 <img
@@ -251,29 +262,42 @@ export default function ClothingDetail() {
                       numberOfMonths={1}
                     />
                   </div>
-                  {dateRange?.from && dateRange?.to && (
-                    <div className="bg-muted rounded-lg p-4 space-y-2">
+                  
+                  {/* Cost Breakdown Section */}
+                  {costs && (
+                    <div className="bg-muted rounded-lg p-4 space-y-3">
                       <div className="flex justify-between text-sm">
                         <span>Duration</span>
-                        <span>{differenceInDays(dateRange.to, dateRange.from) + 1} days</span>
+                        <span>{costs.days} days</span>
                       </div>
                       <div className="flex justify-between text-sm">
-                        <span>Rate</span>
-                        <span>₹{clothing.rent_per_day}/day</span>
+                        <span>Base Rent (₹{clothing.rent_per_day} x {costs.days})</span>
+                        <span>₹{costs.baseRent}</span>
                       </div>
-                      <div className="border-t border-border pt-2 flex justify-between font-semibold">
-                        <span>Total</span>
-                        <span>₹{calculateTotal()}</span>
+                      <div className="flex justify-between text-sm text-muted-foreground">
+                        <span>Platform Fee (10%)</span>
+                        <span>+₹{costs.serviceFee}</span>
+                      </div>
+                      
+                      <div className="border-t border-border pt-2 flex justify-between font-bold text-lg">
+                        <span>Total to Pay</span>
+                        <span>₹{costs.totalAmount}</span>
+                      </div>
+                      
+                      <div className="text-xs text-muted-foreground bg-background/50 p-2 rounded flex gap-2">
+                        <Info className="w-4 h-4 flex-shrink-0" />
+                        <span>Includes service fee for platform maintenance and coordination.</span>
                       </div>
                     </div>
                   )}
+
                   <DialogFooter>
                     <Button
                       onClick={handleRent}
                       disabled={!dateRange?.from || !dateRange?.to || isRenting}
                       className="w-full"
                     >
-                      {isRenting ? 'Submitting...' : 'Confirm Rental Request'}
+                      {isRenting ? 'Submitting...' : `Confirm & Pay ₹${costs ? costs.totalAmount : ''}`}
                     </Button>
                   </DialogFooter>
                 </DialogContent>
